@@ -1,33 +1,273 @@
-const CACHE = 'venda-rural-v2';
-const ASSETS = [
-  './', './index.html', './manifest.webmanifest',
-  './css/app.css',
-  './js/app.js',
-  './js/db/database.js',
-  './js/domain/customers.js','./js/domain/products.js','./js/domain/orders.js',
-  './js/domain/sales.js','./js/domain/payments.js','./js/domain/routes.js',
-  './js/domain/production.js',
-  './js/services/sale-service.js','./js/services/payment-service.js',
-  './js/services/backup-service.js','./js/services/route-service.js',
-  './js/ui/home.js','./js/ui/customers.js','./js/ui/products.js',
-  './js/ui/orders.js','./js/ui/sales.js','./js/ui/routes.js',
-  './js/ui/reports.js','./js/ui/production.js'
+// const CACHE = 'venda-rural-v2';
+// const ASSETS = [
+//   './', './index.html', './manifest.webmanifest',
+//   './css/app.css',
+//   './js/app.js',
+//   './js/db/database.js',
+//   './js/domain/customers.js','./js/domain/products.js','./js/domain/orders.js',
+//   './js/domain/sales.js','./js/domain/payments.js','./js/domain/routes.js',
+//   './js/domain/production.js',
+//   './js/services/sale-service.js','./js/services/payment-service.js',
+//   './js/services/backup-service.js','./js/services/route-service.js',
+//   './js/ui/home.js','./js/ui/customers.js','./js/ui/products.js',
+//   './js/ui/orders.js','./js/ui/sales.js','./js/ui/routes.js',
+//   './js/ui/reports.js','./js/ui/production.js'
+// ];
+// self.addEventListener('install', e => {
+//   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+// });
+// self.addEventListener('activate', e => {
+//   e.waitUntil(caches.keys().then(keys =>
+//     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+//   ).then(() => self.clients.claim()));
+// });
+// self.addEventListener('fetch', e => {
+//   if (e.request.method !== 'GET') return;
+//   e.respondWith(
+//     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+//       const copy = res.clone();
+//       caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+//       return res;
+//     }).catch(() => caches.match('./index.html')))
+//   );
+// });
+
+
+'use strict';
+
+/**
+ * VendaRural — Service Worker
+ *
+ * Compatível com:
+ * - GitHub Pages (/vendas-rural/)
+ * - HTTPS
+ * - Instalação como PWA
+ * - Funcionamento offline
+ *
+ * Estratégias:
+ * - Navegação HTML: Network First
+ * - Recursos estáticos: Cache First
+ * - Recursos não encontrados: fallback offline
+ */
+
+const CACHE_VERSION = 'venda-rural-v3';
+
+const CACHE_PREFIX = 'venda-rural-';
+
+const PRECACHE_ASSETS = [
+    './',
+    './index.html',
+    './manifest.webmanifest',
+
+    // Estilos
+    './css/app.css',
+
+    // Aplicação
+    './js/app.js',
+
+    // Banco de dados
+    './js/db/database.js',
+
+    // Domínio
+    './js/domain/customers.js',
+    './js/domain/products.js',
+    './js/domain/orders.js',
+    './js/domain/sales.js',
+    './js/domain/payments.js',
+    './js/domain/routes.js',
+    './js/domain/production.js',
+
+    // Serviços
+    './js/services/sale-service.js',
+    './js/services/payment-service.js',
+    './js/services/backup-service.js',
+    './js/services/route-service.js',
+
+    // Interface
+    './js/ui/home.js',
+    './js/ui/customers.js',
+    './js/ui/products.js',
+    './js/ui/orders.js',
+    './js/ui/sales.js',
+    './js/ui/routes.js',
+    './js/ui/reports.js',
+    './js/ui/production.js'
 ];
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+
+const BASE_URL = self.registration.scope;
+
+const INDEX_URL = new URL('./index.html', BASE_URL).href;
+
+const CACHE_URLS = PRECACHE_ASSETS.map(
+    path => new URL(path, BASE_URL).href
+);
+
+/**
+ * Verifica se a requisição pertence à aplicação.
+ */
+function isSameOrigin(request) {
+    return new URL(request.url).origin === self.location.origin;
+}
+
+/**
+ * Verifica se a URL pertence ao escopo do PWA.
+ */
+function isWithinScope(request) {
+    return request.url.startsWith(BASE_URL);
+}
+
+/**
+ * Verifica se a resposta pode ser armazenada.
+ */
+function isCacheable(response) {
+    return (
+        response &&
+        response.status === 200 &&
+        response.type === 'basic'
+    );
+}
+
+/**
+ * Instalação:
+ * Pré-carrega os recursos essenciais.
+ */
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_VERSION)
+            .then(cache => cache.addAll(CACHE_URLS))
+            .then(() => self.skipWaiting())
+    );
 });
-self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ).then(() => self.clients.claim()));
+
+/**
+ * Ativação:
+ * Remove versões antigas dos caches da aplicação.
+ */
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys()
+            .then(cacheNames => {
+                return Promise.all(
+                    cacheNames
+                        .filter(name =>
+                            name.startsWith(CACHE_PREFIX) &&
+                            name !== CACHE_VERSION
+                        )
+                        .map(name => caches.delete(name))
+                );
+            })
+            .then(() => self.clients.claim())
+    );
 });
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
-      const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
-      return res;
-    }).catch(() => caches.match('./index.html')))
-  );
+
+/**
+ * Navegação:
+ * Network First.
+ *
+ * Tenta obter a versão atual da página.
+ * Se estiver offline, utiliza o index.html armazenado.
+ */
+async function handleNavigation(request) {
+    try {
+        const response = await fetch(request);
+
+        if (isCacheable(response)) {
+            const cache = await caches.open(CACHE_VERSION);
+
+            await cache.put(request, response.clone());
+        }
+
+        return response;
+
+    } catch {
+        const cachedPage = await caches.match(request);
+
+        if (cachedPage) {
+            return cachedPage;
+        }
+
+        const offlinePage = await caches.match(INDEX_URL);
+
+        if (offlinePage) {
+            return offlinePage;
+        }
+
+        return new Response(
+            'Você está offline e a página não está disponível.',
+            {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8'
+                }
+            }
+        );
+    }
+}
+
+/**
+ * Recursos estáticos:
+ * Cache First.
+ *
+ * Prioriza o cache e consulta a rede quando necessário.
+ */
+async function handleStaticResource(request) {
+    const cachedResponse = await caches.match(request);
+
+    if (cachedResponse) {
+        return cachedResponse;
+    }
+
+    try {
+        const response = await fetch(request);
+
+        if (isCacheable(response)) {
+            const cache = await caches.open(CACHE_VERSION);
+
+            await cache.put(request, response.clone());
+        }
+
+        return response;
+
+    } catch {
+        return new Response(
+            'Recurso indisponível offline.',
+            {
+                status: 503,
+                headers: {
+                    'Content-Type': 'text/plain; charset=utf-8'
+                }
+            }
+        );
+    }
+}
+
+/**
+ * Interceptação das requisições.
+ */
+self.addEventListener('fetch', event => {
+    const request = event.request;
+
+    // Somente requisições GET.
+    if (request.method !== 'GET') {
+        return;
+    }
+
+    // Ignora requisições externas.
+    if (!isSameOrigin(request)) {
+        return;
+    }
+
+    // Ignora recursos fora do escopo da aplicação.
+    if (!isWithinScope(request)) {
+        return;
+    }
+
+    // Navegação entre páginas.
+    if (request.mode === 'navigate') {
+        event.respondWith(handleNavigation(request));
+        return;
+    }
+
+    // Recursos estáticos.
+    event.respondWith(handleStaticResource(request));
 });
