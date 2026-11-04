@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'venda-rural-v4.0.0';
+const CACHE_VERSION = 'venda-rural-v4';
 
 const CACHE_PREFIX = 'venda-rural-';
 
