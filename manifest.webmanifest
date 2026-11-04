@@ -1,9 +1,9 @@
 {
+    "id": "/vendas-rural/index.html",
     "name": "Venda Rural",
     "short_name": "Venda Rural",
     "start_url": "/vendas-rural/index.html",
     "scope": "/vendas-rural/",
-    "id": "/vendas-rural/index.html",
     "display": "standalone",
     "background_color": "#ffffff",
     "theme_color": "#2e7d32",
