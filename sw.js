@@ -21,6 +21,7 @@ const PRECACHE_ASSETS = [
 
     // Aplicação
     './js/app.js',
+    './js/utils.js',
 
     // Banco de dados
     './js/db/database.js',

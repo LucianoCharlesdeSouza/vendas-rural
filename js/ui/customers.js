@@ -3,6 +3,7 @@ import { situacaoCliente } from '../services/payment-service.js';
 import { listAllSales } from '../domain/sales.js';
 import { totalPagoDaVenda } from '../domain/payments.js';
 import { brl, escapeHtml as escape, fmtDate } from './home.js';
+import { gerarLinkWhatsApp } from '../utils.js';
 
 export async function renderCustomers(el, go){
   el.innerHTML = `
@@ -54,7 +55,8 @@ export async function renderCustomerDetail(el, go, params){
       <h2 style="margin:0">${escape(c.nome)}</h2>
       <div class="muted">${c.telefone?escape(c.telefone):''}</div>
       <div class="muted">${c.endereco?escape(c.endereco):''}</div>
-      ${linkWpp ? `<a href="${linkWpp}" target="_blank" class="btn small" style="background:#25D366; color:#fff; text-decoration:none; text-align:center; margin-top:10px; display:block;">Abrir WhatsApp</a>` : ''}
+      <!-- BOTÃO DO WHATSAPP AQUI -->
+      ${linkWpp ? `<a href="${linkWpp}" target="_blank" class="btn small" style="background:#25D366; color:#fff; text-decoration:none; text-align:center; margin-top:10px; display:block; padding:10px;">Abrir WhatsApp</a>` : ''}
     </div>
     <div class="card">
       <div class="row"><span>Total vendido</span><span class="big">${brl(s.totalVendido)}</span></div>

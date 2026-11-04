@@ -17,19 +17,6 @@ import {
 } from './services/backup-service.js';
 import { fmtDateTime } from './ui/home.js';
 
-// Adicione isso no topo do seu arquivo principal (ex: js/app.js ou js/utils.js)
-function gerarLinkWhatsApp(telefone, mensagem = '') {
-  if (!telefone) return null;
-  // Remove tudo que não for número
-  let num = String(telefone).replace(/\D/g, '');
-  if (!num) return null;
-  // Se não tiver código do país (Brasil = 55), adiciona
-  if (num.length === 10 || num.length === 11) num = '55' + num;
-  
-  const texto = encodeURIComponent(mensagem);
-  return `https://wa.me/${num}${mensagem ? `?text=${texto}` : ''}`;
-}
-
 const app = document.getElementById('app');
 const title = document.getElementById('title');
 const btnBack = document.getElementById('btnBack');
