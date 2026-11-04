@@ -11,13 +11,13 @@ const PRECACHE_ASSETS = [
     './css/app.css',
 
     // Ícones PWA
-    './icons/icon-192.png',
-    './icons/icon-512.png',
+    './icons/vendarural-192.png',
+    './icons/vendarural-512.png',
     './icons/favicon.svg',
     './icons/favicon.ico',
     './icons/favicon-96x96.png',
-    './icons/icon-maskable-192.png',
-    './icons/icon-maskable-512.png',    
+    './icons/vendarural-maskable-192.png',
+    './icons/vendarural-maskable-512.png',    
 
     // Aplicação
     './js/app.js',
