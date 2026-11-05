@@ -97,30 +97,30 @@ const router = createRouter({
     { 
       path: '/cliente/:id/historico', 
       name: 'cliente-historico', 
-      component: () => ClienteHistoricoView,
+      component: ClienteHistoricoView,
       meta: { title: 'Histórico' } },
     { 
       path: '/receber', 
       name: 'receber', 
-      component: () => ReceberView,
+      component: ReceberView,
       meta: { title: 'Recebimentos' }
     },
     { 
       path: '/receber/:id', 
       name: 'receber-cliente', 
-      component: () => ReceberClienteView, 
+      component: ReceberClienteView, 
       meta: { title: 'Receber' }
     },
     { 
       path: '/relatorios', 
       name: 'relatorios', 
-      component: () => RelatoriosView, 
+      component: RelatoriosView, 
       meta: { title: 'Relatórios' }
     },
     { 
       path: '/producao', 
       name: 'producao', 
-      component: () => ProducaoView, 
+      component: ProducaoView, 
       meta: { title: 'Produção' }
     },
     { 
@@ -133,20 +133,20 @@ const router = createRouter({
    {
       path: '/rota',
       name: 'rota',
-      component: () => RotaView,
+      component: RotaView,
       meta: { title: 'Rota de Hoje' }
     },
     {
       path: '/rota-criar',
       name: 'rota-criar',
-      component: () => RotaCriarView,
+      component: RotaCriarView,
       meta: { title: 'Criar Rota' }
     },    
     
     { 
       path: '/atender/:clienteId', 
       name: 'atender-cliente', 
-      component: () => AtenderClienteView, 
+      component: AtenderClienteView, 
       meta: { title: 'Atender Cliente' } 
     }    
 
