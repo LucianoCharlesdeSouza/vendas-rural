@@ -1,8 +1,15 @@
-# Venda Rural — MVP
+~~Home~~ (Feito)
 
-PWA offline para o produtor rural controlar clientes, pedidos, vendas, pagamentos,
-entregas (rota) e produção diária. Sem servidor, sem login, sem custo de infraestrutura.
+~~Clientes (Lista, Formulário, Detalhes)~~ (Feito)
 
-## Como executar
+Produtos (Lista e Formulário) - (Feito).
 
-Sirva a pasta por qualquer servidor estático para instalar como PWA.
+Vendas (Nova Venda e Pagamento). (Feito)
+
+Pedidos (Lista, Formulário, Detalhes, Entregar).(Feito)
+
+Rota (Criação, Lista com Drag & Drop, Concluir).
+
+Relatórios / Recebimentos / Produção / Backup.
+
+Layout e PWA (Service Worker, Manifest, etc).
