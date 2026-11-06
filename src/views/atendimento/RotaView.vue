@@ -63,7 +63,7 @@
             <span>{{ formatarDinheiro(parada.total) }}</span>
           </div>
         </div>
-        <span class="pill pago" style="margin-left: 8px;">✓ Feito</span>
+        <span class="pill" style="background: #e0e0e0; color: #333; margin-left: 8px;">✓ Finalizado</span>
       </div>
     </div>
 
@@ -76,8 +76,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { listCustomers } from '@/domain/customers.js'
 import { getOrderItems, listOrders } from '@/domain/orders.js'
+import { saveRoute } from '@/domain/routes.js' // <-- IMPORTAÇÃO ADICIONADA AQUI
 import { obterRotaDeHoje, moverParada } from '@/services/route-service.js'
 import { formatarDinheiro, formatarQtd } from '@/utils.js'
+import { listSales } from '@/domain/sales.js'
 
 const router = useRouter()
 const carregando = ref(true)
@@ -87,42 +89,88 @@ const resumoParadas = ref([])
 // Estado do Drag & Drop
 const draggedIndex = ref(null)
 
-// Filtra as paradas para exibição na tela
 const paradasPendentes = computed(() => resumoParadas.value.filter(p => !p.concluida))
 const paradasConcluidas = computed(() => resumoParadas.value.filter(p => p.concluida))
 
 const carregarRota = async () => {
   carregando.value = true
-  rota.value = await obterRotaDeHoje()
+  const rotaAtual = await obterRotaDeHoje()
   
-  if (rota.value) {
+  if (rotaAtual) {
     const clientes = await listCustomers()
     const pedidos = await listOrders()
+    const vendas = await listSales() // <-- Busca todas as vendas do dia
+    const hoje = new Date().toISOString().slice(0, 10)
+    
     const resumo = []
+    let rotaModificada = false
+    const novasParadas = [...rotaAtual.paradas]
 
-    // Usamos o index original (i) para garantir que o Drag & Drop pegue o item certo
-    for (let i = 0; i < rota.value.paradas.length; i++) {
-      const p = rota.value.paradas[i]
+    for (let i = 0; i < novasParadas.length; i++) {
+      const p = novasParadas[i]
       const cliente = clientes.find(c => c.id === p.clienteId)
+      
       const pedidosCliente = pedidos.filter(x => x.clienteId === p.clienteId && x.status === 'pendente')
       
+      // Auto-limpeza
+      if (p.pedidoIds && p.pedidoIds.length > 0 && pedidosCliente.length === 0 && !p.concluida) {
+        novasParadas[i].concluida = true
+        novasParadas[i].concluidaEm = new Date().toISOString()
+        p.concluida = true
+        rotaModificada = true
+      }
+
+      if (!cliente) continue
+      
       let itens = []
-      for (const ped of pedidosCliente) {
-        itens = itens.concat(await getOrderItems(ped.id))
+      let total = 0
+
+      // Se ainda está pendente, mostra o valor dos pedidos
+      if (!p.concluida) {
+        for (const ped of pedidosCliente) {
+          itens = itens.concat(await getOrderItems(ped.id))
+        }
+        total = itens.reduce((soma, item) => soma + item.subtotal, 0)
+      } else {
+        // Se já foi concluído, mostra o valor REAL VENDIDO hoje para este cliente
+        const vendasHoje = vendas.filter(v => 
+          v.clienteId === p.clienteId && 
+          v.createdAt.slice(0, 10) === hoje &&
+          !v.cancelada
+        )
+        total = vendasHoje.reduce((soma, v) => soma + v.total, 0)
+        
+        // Se não houve venda (ex: cancelou o pedido ou não vendeu nada), tenta pegar o valor que tinha no pedido original
+        if (total === 0 && p.pedidoIds && p.pedidoIds.length > 0) {
+          const todosPedidosCliente = pedidos.filter(x => p.pedidoIds.includes(x.id))
+          for (const ped of todosPedidosCliente) {
+            itens = itens.concat(await getOrderItems(ped.id))
+          }
+          total = itens.reduce((soma, item) => soma + item.subtotal, 0)
+        }
       }
       
-      const total = itens.reduce((soma, item) => soma + item.subtotal, 0)
       const resumoItens = itens.map(i => `${formatarQtd(i.quantidade)} ${i.produtoNome}`).join(', ')
 
       resumo.push({
         clienteId: p.clienteId,
-        nomeCliente: cliente ? cliente.nome : '?',
+        nomeCliente: cliente.nome,
         total,
         resumoItens,
         concluida: p.concluida,
-        originalIndex: i // Guarda a posição real do array no banco de dados
+        originalIndex: i
       })
     }
+
+    if (rotaModificada) {
+      await saveRoute({ 
+        id: rotaAtual.id, 
+        data: rotaAtual.data, 
+        paradas: novasParadas 
+      })
+    }
+
+    rota.value = { ...rotaAtual, paradas: novasParadas }
     resumoParadas.value = resumo
   }
   carregando.value = false
@@ -130,7 +178,7 @@ const carregarRota = async () => {
 
 onMounted(carregarRota)
 
-// Drag & Drop com base no index original
+// Drag & Drop
 const onDragStart = (indexOriginal) => {
   draggedIndex.value = indexOriginal
 }
@@ -140,7 +188,7 @@ const onDrop = async (targetIndexOriginal) => {
   
   await moverParada(rota.value.id, draggedIndex.value, targetIndexOriginal)
   draggedIndex.value = null
-  await carregarRota() // Recarrega a lista na nova ordem
+  await carregarRota()
 }
 
 // Ações

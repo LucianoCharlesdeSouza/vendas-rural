@@ -19,7 +19,9 @@
       </div>
       
       <button class="btn" @click="modoEntrega = true">Entregar</button>
-      <button class="btn danger" @click="cancelarPedido">Cancelar Pedido</button>
+      <button class="btn danger" @click="cancelarPedido" :disabled="processando">
+        {{ processando ? 'Cancelando...' : 'Cancelar Pedido' }}
+      </button>
     </div>
 
     <!-- FASE 2: Tela de Pagamento e Finalização -->
@@ -47,8 +49,8 @@
         </select>
       </div>
 
-      <button class="btn" @click="confirmarEntrega" :disabled="salvando">
-        {{ salvando ? 'Processando...' : 'Confirmar' }}
+      <button class="btn" @click="confirmarEntrega" :disabled="processando">
+        {{ processando ? 'Processando...' : 'Confirmar' }}
       </button>
       <button class="btn sec" @click="modoEntrega = false">Voltar</button>
     </div>
@@ -61,6 +63,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { getOrder, getOrderItems, setOrderStatus } from '@/domain/orders.js'
 import { getCustomer } from '@/domain/customers.js'
 import { finalizarVenda } from '@/services/sale-service.js'
+import { marcarParadaConcluida } from '@/services/route-service.js' // IMPORTANTE
 import { parseMoneyCentavos } from '@/db/database.js'
 import { formatarDinheiro, formatarQtd } from '@/utils.js'
 
@@ -68,11 +71,11 @@ const router = useRouter()
 const route = useRoute()
 
 const carregando = ref(true)
+const processando = ref(false)
 const pedido = ref(null)
 const cliente = ref(null)
 const itens = ref([])
 const modoEntrega = ref(false)
-const salvando = ref(false)
 
 const valorRecebidoInput = ref('')
 const formaPagamento = ref('dinheiro')
@@ -86,23 +89,31 @@ onMounted(async () => {
   itens.value = await getOrderItems(pedido.value.id)
   cliente.value = await getCustomer(pedido.value.clienteId)
   
-  // Preenche o input com o total
   valorRecebidoInput.value = (total.value / 100).toFixed(2).replace('.', ',')
   
   carregando.value = false
 })
 
+// Substitua as funções cancelarPedido e confirmarEntrega por estas:
+
 const cancelarPedido = async () => {
   if (!confirm('Cancelar este pedido?')) return
-  await setOrderStatus(pedido.value.id, 'cancelado')
-  router.replace({ name: 'pedidos' })
+  processando.value = true
+  try {
+    await setOrderStatus(pedido.value.id, 'cancelado')
+    router.replace({ name: 'pedidos' }) // Sempre volta para pedidos
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    processando.value = false
+  }
 }
 
 const confirmarEntrega = async () => {
   const valorCentavos = parseMoneyCentavos(valorRecebidoInput.value)
   if (valorCentavos > total.value) return alert('Pagamento maior que o total.')
 
-  salvando.value = true
+  processando.value = true
   try {
     const resultado = await finalizarVenda({
       pedidoId: pedido.value.id,
@@ -111,22 +122,12 @@ const confirmarEntrega = async () => {
       valorRecebido: valorCentavos,
       formaPagamento: formaPagamento.value
     })
-    
     alert(`Pedido entregue!\nTotal: ${formatarDinheiro(resultado.saldo.total)}\nRecebido: ${formatarDinheiro(resultado.pago)}\nFalta: ${formatarDinheiro(resultado.saldo.restante)}`)
-
-    // AQUI ESTÁ A CORREÇÃO:
-    if (route.query.rotaId) {
-      const { marcarParadaConcluida } = await import('@/services/route-service.js')
-      await marcarParadaConcluida(route.query.rotaId, pedido.value.clienteId)
-      router.replace({ name: 'rota' })
-    } else {
-      router.replace({ name: 'pedidos' })
-    }
-    
+    router.replace({ name: 'pedidos' }) // Sempre volta para pedidos
   } catch (e) {
     alert(e.message)
   } finally {
-    salvando.value = false
+    processando.value = false
   }
 }
 </script>

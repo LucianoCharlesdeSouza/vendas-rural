@@ -37,3 +37,25 @@ const voltar = () => {
 import { ref } from 'vue'
 const toastMensagem = ref('')
 </script>
+
+<style scoped>
+.topbar {
+  background: var(--primary);
+  color: white;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+}
+
+.topbar h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+</style>

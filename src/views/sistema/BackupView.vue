@@ -12,12 +12,21 @@
       </div>
       
       <div class="muted" style="margin-top: 6px">
-        Armazenamento persistente: <strong>{{ persistido ? 'Sim' : 'Não' }}</strong>
+        Armazenamento protegido: <strong>{{ persistido ? 'Sim' : 'Não' }}</strong>
       </div>
-      
-      <div v-if="estimativa" class="muted">
-        Uso aproximado: {{ (estimativa.usage / 1024 / 1024).toFixed(1) }} MB 
-        de {{ (estimativa.quota / 1024 / 1024).toFixed(0) }} MB
+    </div>
+
+    <!-- NOVO CARD: Armazenamento -->
+    <div v-if="estimativa" class="card" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+      <div style="font-weight: bold; color: #166534; margin-bottom: 4px;">
+        Espaço no celular
+      </div>
+      <div style="font-size: 15px; color: #15803d;">
+        Seu app está usando <strong>{{ formatarMB(estimativa.usage) }}</strong> de 
+        <strong>{{ formatarGB(estimativa.quota) }}</strong> disponíveis no celular.
+      </div>
+      <div class="muted" style="margin-top: 8px; font-size: 13px;">
+        Fique tranquilo: o Venda Rural guarda apenas textos e números. Você precisaria de milhares de vendas para chegar a 1 GB.
       </div>
     </div>
 
@@ -42,15 +51,25 @@
       style="display: none" 
       @change="restaurarBackup"
     >
-
-    <!-- Aviso de Segurança -->
+    
     <div class="card muted" style="margin-top: 15px">
       Os dados ficam somente neste celular. Se o celular for perdido, os dados podem ser perdidos. 
       Faça backups periódicos.
     </div>
+
+    <!-- NOVA SEÇÃO: ARQUIVAMENTO -->
+    <h2 style="margin-top: 30px;">Arquivar Histórico</h2>
+    <div class="card" style="border: 1px solid #ddd;">
+      <div style="margin-bottom: 10px; font-size: 15px;">
+        Se o celular está ficando lento ou cheio, você pode limpar as vendas antigas que já foram pagas.
+        <strong>Seus clientes, produtos, quem está devendo e os pedidos pendentes não serão apagados.</strong>
+      </div>
+      <button class="btn danger" @click="limparHistorico" :disabled="processando">
+        Arquivar e Limpar Vendas Antigas
+      </button>
+    </div>    
   </div>
 </template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -58,6 +77,7 @@ import {
   baixarBackup, 
   compartilharOuBaixarBackup, 
   restaurarBackup as apiRestaurarBackup,
+  arquivarDadosResolvidos,
   ultimoBackup,
   ultimoRestore,
   estimativaArmazenamento
@@ -94,6 +114,21 @@ onMounted(async () => {
 const formatarDataHora = (iso) => {
   if (!iso) return ''
   return new Date(iso).toLocaleString('pt-BR')
+}
+
+const formatarMB = (bytes) => {
+  if (!bytes) return '0 MB'
+  const mb = bytes / (1024 * 1024)
+  // Se for muito pequeno (ex: 0.5 MB), mostra em KB para não parecer zerado
+  if (mb < 1) return (bytes / 1024).toFixed(0) + ' KB'
+  return mb.toFixed(1) + ' MB'
+}
+
+const formatarGB = (bytes) => {
+  if (!bytes) return '0 GB'
+  const gb = bytes / (1024 * 1024 * 1024)
+  if (gb < 1) return (bytes / (1024 * 1024)).toFixed(0) + ' MB'
+  return gb.toFixed(1) + ' GB'
 }
 
 const fazerBackup = async () => {
@@ -167,6 +202,34 @@ const restaurarBackup = async (event) => {
   } finally {
     processando.value = false
     event.target.value = '' // Limpa o input
+  }
+}
+
+const limparHistorico = async () => {
+  // Aviso 1: Lembrar do backup
+  const aviso1 = confirm(
+    "ATENÇÃO!\n\nVocê já fez um backup recente?\n\n" +
+    "Recomendamos fazer um backup AGORA antes de continuar, pois o histórico será removido do celular."
+  )
+  if (!aviso1) return
+
+  // Aviso 2: Confirmação final
+  const aviso2 = confirm(
+    "Confirmar limpeza?\n\n" +
+    "Vendas já pagas, pedidos entregues e rotas antigas serão apagados do celular.\n" +
+    "Seus clientes, produtos e dívidas em aberto serão mantidos."
+  )
+  if (!aviso2) return
+
+  processando.value = true
+  try {
+    await arquivarDadosResolvidos()
+    alert('Limpeza concluída com sucesso! O histórico foi arquivado e o app está mais leve.')
+    router.replace({ name: 'home' })
+  } catch (e) {
+    alert('Erro ao limpar: ' + e.message)
+  } finally {
+    processando.value = false
   }
 }
 </script>
