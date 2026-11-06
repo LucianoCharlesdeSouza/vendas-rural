@@ -13,38 +13,74 @@
       <input type="date" v-model="dataEntrega">
     </div>
 
+    <!-- Adicionar Produtos -->
     <div class="card">
+      <div class="field">
+        <label class="muted">Produto</label>
+        <select v-model="produtoId">
+          <option v-for="p in produtos" :key="p.id" :value="p.id">
+            {{ p.nome }} ({{ formatarDinheiro(p.preco) }}/{{ p.unidade }})
+          </option>
+        </select>
+      </div>
+
       <div class="grid2">
-        <div>
-          <label class="muted">Produto</label>
-          <select v-model="produtoId">
-            <option v-for="p in produtos" :key="p.id" :value="p.id">
-              {{ p.nome }} ({{ formatarDinheiro(p.preco) }}/{{ p.unidade }})
-            </option>
-          </select>
-        </div>
-        <div>
+        <div class="field" style="margin: 0;">
           <label class="muted">Qtd</label>
-          <input v-model="qtdInput" inputmode="decimal">
+          <input v-model="qtdInput" inputmode="decimal" placeholder="1">
+        </div>
+        <div class="field" style="margin: 0; display: flex; align-items: flex-end;">
+          <button class="btn" style="margin: 0; width: 100%; padding: 14px 8px;" @click="adicionarItem">
+            Adicionar
+          </button>
         </div>
       </div>
-      <button class="btn small" @click="adicionarItem">Adicionar</button>
     </div>
 
-    <div v-for="(item, index) in carrinho" :key="index" class="item-row">
-      <span>{{ formatarQtd(item.quantidade) }} {{ item.produtoNome }}</span>
-      <span>
-        {{ formatarDinheiro(item.subtotal) }}
-        <button class="btn small danger" @click="removerItem(index)">x</button>
-      </span>
+    <!-- Lista do Carrinho Inteligente -->
+    <div id="itens" v-if="carrinho.length > 0">
+      <h3 style="margin-top: 24px;">Itens do Pedido</h3>
+      
+      <div v-for="(item, index) in carrinho" :key="item.produtoId" class="card" style="padding: 12px; margin: 8px 0;">
+        <div class="row" style="align-items: flex-start;">
+          <!-- Info do Produto -->
+          <div style="flex: 1;">
+            <strong>{{ item.produtoNome }}</strong>
+            <div class="muted" style="font-size: 14px; margin-top: 4px;">
+              {{ formatarDinheiro(item.precoUnitario) }} / {{ item.unidade }}
+            </div>
+          </div>
+          
+          <!-- Subtotal -->
+          <div class="right" style="text-align: right;">
+            <strong>{{ formatarDinheiro(item.subtotal) }}</strong>
+          </div>
+        </div>
+
+        <!-- Controles de Quantidade -->
+        <div class="row" style="margin-top: 12px; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px; background: #f3f4f6; border-radius: 8px; padding: 4px;">
+            <button class="btn-qty" @click="diminuirItem(index)">−</button>
+            <span style="font-weight: bold; min-width: 30px; text-align: center;">
+              {{ formatarQtd(item.quantidade) }}
+            </span>
+            <button class="btn-qty" @click="aumentarItem(index)">+</button>
+          </div>
+          
+          <button class="btn small danger" style="margin: 0;" @click="removerItem(index)">
+            Remover
+          </button>
+        </div>
+      </div>
     </div>
 
-    <div class="tot">
+    <!-- Total -->
+    <div class="tot" style="margin-top: 24px;">
       <span>TOTAL</span>
-      <span>{{ formatarDinheiro(totalCarrinho) }}</span>
+      <span style="color: var(--primary);">{{ formatarDinheiro(totalCarrinho) }}</span>
     </div>
 
-    <button class="btn" @click="salvarPedido" :disabled="salvando">
+    <button class="btn" @click="salvarPedido" :disabled="salvando || carrinho.length === 0">
       {{ salvando ? 'Salvando...' : 'Salvar Pedido' }}
     </button>
   </div>
@@ -87,14 +123,43 @@ const adicionarItem = () => {
   const q = parseDecimal(qtdInput.value)
   if (!p || q <= 0) return alert('Quantidade inválida.')
 
-  carrinho.value.push({
-    produtoId: p.id,
-    produtoNome: p.nome,
-    quantidade: q,
-    precoUnitario: p.preco,
-    subtotal: calcSubtotalCentavos(q, p.preco)
-  })
+  // LÓGICA NOVA: Verifica se o produto já está no carrinho
+  const itemExistente = carrinho.value.find(i => i.produtoId === p.id)
+
+  if (itemExistente) {
+    itemExistente.quantidade += q
+    itemExistente.subtotal = calcSubtotalCentavos(itemExistente.quantidade, itemExistente.precoUnitario)
+  } else {
+    carrinho.value.push({
+      produtoId: p.id,
+      produtoNome: p.nome,
+      unidade: p.unidade,
+      quantidade: q,
+      precoUnitario: p.preco,
+      subtotal: calcSubtotalCentavos(q, p.preco)
+    })
+  }
+  
   qtdInput.value = '1'
+}
+
+const aumentarItem = (index) => {
+  const item = carrinho.value[index]
+  const incremento = item.unidade === 'kg' ? 0.5 : 1
+  item.quantidade += incremento
+  item.subtotal = calcSubtotalCentavos(item.quantidade, item.precoUnitario)
+}
+
+const diminuirItem = (index) => {
+  const item = carrinho.value[index]
+  const decremento = item.unidade === 'kg' ? 0.5 : 1
+  
+  if (item.quantidade - decremento <= 0) {
+    removerItem(index)
+  } else {
+    item.quantidade -= decremento
+    item.subtotal = calcSubtotalCentavos(item.quantidade, item.precoUnitario)
+  }
 }
 
 const removerItem = (index) => carrinho.value.splice(index, 1)
@@ -117,3 +182,24 @@ const salvarPedido = async () => {
   }
 }
 </script>
+
+<style scoped>
+/* Estilo dos botões de + e - do carrinho */
+.btn-qty {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text-main);
+  cursor: pointer;
+}
+.btn-qty:active {
+  background: #e5e7eb;
+}
+</style>
